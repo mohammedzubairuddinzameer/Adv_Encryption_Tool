@@ -1,105 +1,86 @@
-# AES-256 Encryption Web App using Streamlit (1GB Support + History)
+import os
 import streamlit as st
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
-import os
-import json
-import datetime
+import base64
 
 # Constants
-KEY_LEN = 32
-SALT_LEN = 16
-IV_LEN = 16
-ITERATIONS = 100000
-HISTORY_FILE = "history.json"
-CHUNK_SIZE = 1024 * 1024 * 10  # 10MB chunks for large files
+CHUNK_SIZE = 64 * 1024  # 64KB chunks
+SALT_SIZE = 16
+KEY_SIZE = 32  # AES-256
+IV_SIZE = 16
+PBKDF2_ITERATIONS = 100000
 
-# --- Utility Functions ---
-def load_history():
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r") as f:
-            return json.load(f)
-    return []
-
-def save_history(history):
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=4)
-
-def add_to_history(action, filename, size):
-    history = load_history()
-    history.append({
-        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "action": action,
-        "filename": filename,
-        "size_MB": round(size / (1024 * 1024), 2)
-    })
-    save_history(history)
+# Session state for history
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 def derive_key(password, salt):
-    return PBKDF2(password, salt, dkLen=KEY_LEN, count=ITERATIONS)
+    """Generate AES key from password using PBKDF2"""
+    return PBKDF2(password, salt, dkLen=KEY_SIZE, count=PBKDF2_ITERATIONS)
 
-def encrypt_file(file_path, password, output_path):
-    salt = get_random_bytes(SALT_LEN)
-    key = derive_key(password.encode(), salt)
-    cipher = AES.new(key, AES.MODE_CFB)
-    with open(file_path, "rb") as f_in, open(output_path, "wb") as f_out:
-        f_out.write(salt + cipher.iv)  # Store salt + IV at start
-        while chunk := f_in.read(CHUNK_SIZE):
-            f_out.write(cipher.encrypt(chunk))
+def encrypt_file(input_file, password):
+    salt = get_random_bytes(SALT_SIZE)
+    key = derive_key(password, salt)
+    iv = get_random_bytes(IV_SIZE)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
 
-def decrypt_file(file_path, password, output_path):
-    with open(file_path, "rb") as f_in:
-        salt = f_in.read(SALT_LEN)
-        iv = f_in.read(IV_LEN)
-        key = derive_key(password.encode(), salt)
-        cipher = AES.new(key, AES.MODE_CFB, iv=iv)
-        with open(output_path, "wb") as f_out:
-            while chunk := f_in.read(CHUNK_SIZE):
-                f_out.write(cipher.decrypt(chunk))
+    output_file = input_file.name + ".enc"
+    with open(output_file, "wb") as f_out:
+        f_out.write(salt)
+        f_out.write(iv)
 
-# --- Streamlit UI ---
-st.set_page_config(page_title="🔐 AES-256 File Encryption Tool", layout="centered")
-st.title("🔐 AES-256 File Encryption Tool (1GB Support + History)")
+        while chunk := input_file.read(CHUNK_SIZE):
+            if len(chunk) % AES.block_size != 0:
+                chunk += b' ' * (AES.block_size - len(chunk) % AES.block_size)
+            encrypted_chunk = cipher.encrypt(chunk)
+            f_out.write(encrypted_chunk)
 
-option = st.radio("Choose an operation:", ["Encrypt", "Decrypt"])
-password = st.text_input("Enter a password:", type="password")
-uploaded_file = st.file_uploader("Upload a file (max 1GB)", type=None)
+    return output_file
 
-if uploaded_file and password:
-    temp_input_path = os.path.join("temp_input_" + uploaded_file.name)
-    with open(temp_input_path, "wb") as f:
+def decrypt_file(input_file, password):
+    salt = input_file.read(SALT_SIZE)
+    iv = input_file.read(IV_SIZE)
+    key = derive_key(password, salt)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    output_file = input_file.name.replace(".enc", "") + "_decrypted"
+    with open(output_file, "wb") as f_out:
+        while chunk := input_file.read(CHUNK_SIZE):
+            decrypted_chunk = cipher.decrypt(chunk)
+            f_out.write(decrypted_chunk.rstrip(b' '))
+
+    return output_file
+
+# Streamlit UI
+st.title("🔐 Advanced AES-256 Encryption Tool")
+st.write("Securely encrypt and decrypt large files with AES-256 and salted keys.")
+
+mode = st.radio("Choose Mode", ["Encrypt", "Decrypt"])
+password = st.text_input("Enter Password", type="password")
+uploaded_file = st.file_uploader("Upload File", type=None)
+
+if st.button("Run") and uploaded_file and password:
+    with open("temp_input", "wb") as f:
         f.write(uploaded_file.read())
 
-    temp_output_path = "output_" + uploaded_file.name
-    file_size = os.path.getsize(temp_input_path)
+    with open("temp_input", "rb") as f:
+        if mode == "Encrypt":
+            output_path = encrypt_file(f, password)
+            st.success(f"File encrypted: {output_path}")
+            with open(output_path, "rb") as f_out:
+                st.download_button("Download Encrypted File", f_out, file_name=os.path.basename(output_path))
+            st.session_state.history.append({"action": "Encrypt", "file": uploaded_file.name})
+        else:
+            output_path = decrypt_file(f, password)
+            st.success(f"File decrypted: {output_path}")
+            with open(output_path, "rb") as f_out:
+                st.download_button("Download Decrypted File", f_out, file_name=os.path.basename(output_path))
+            st.session_state.history.append({"action": "Decrypt", "file": uploaded_file.name})
 
-    if option == "Encrypt":
-        encrypt_file(temp_input_path, password, temp_output_path)
-        st.success("✅ File encrypted successfully!")
-        with open(temp_output_path, "rb") as f:
-            st.download_button("Download Encrypted File", data=f, file_name=uploaded_file.name + ".enc")
-        add_to_history("Encrypt", uploaded_file.name, file_size)
-
-    elif option == "Decrypt":
-        try:
-            decrypt_file(temp_input_path, password, temp_output_path)
-            st.success("✅ File decrypted successfully!")
-            with open(temp_output_path, "rb") as f:
-                st.download_button("Download Decrypted File", data=f, file_name="decrypted_" + uploaded_file.name)
-            add_to_history("Decrypt", uploaded_file.name, file_size)
-        except Exception as e:
-            st.error(f"❌ Decryption failed: {str(e)}")
-
-# --- Show History ---
-st.markdown("### 📜 Operation History")
-history = load_history()
-if history:
-    st.table(history)
-else:
-    st.info("No history found yet.")
-
-# Cleanup temp files
-for file in [temp_input_path, temp_output_path]:
-    if os.path.exists(file):
-        os.remove(file)
+# Show History
+if st.session_state.history:
+    st.subheader("📜 Operation History")
+    for item in st.session_state.history:
+        st.write(f"**{item['action']}** - {item['file']}")
