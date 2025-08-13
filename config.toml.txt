@@ -1,2 +1,20 @@
 [server]
+# Allow file uploads up to 1GB
 maxUploadSize = 1024
+
+# Increase WebSocket message size limit for large file transfers
+maxMessageSize = 2000
+
+# Enable faster file transfer for large files
+enableCORS = false
+enableXsrfProtection = false
+
+# Optional: Set port (if running locally)
+# port = 8501
+
+[theme]
+primaryColor = "#4CAF50"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#262730"
+textColor = "#FAFAFA"
+font = "sans serif"
