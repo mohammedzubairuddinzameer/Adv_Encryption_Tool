@@ -163,6 +163,16 @@ if not st.session_state.logged_in:
     st.stop()
 
 # Main app UI after login
+# After login logic
+if login_username in users and verify_password(users[login_username]["password"], login_password):
+    st.success("Logged in successfully")
+    st.session_state.logged_in = True
+    st.session_state.username = login_username
+
+# Display username at top
+if st.session_state.logged_in:
+    st.sidebar.success(f"Logged in as: {st.session_state.username}")
+
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.session_state.username = None
