@@ -118,7 +118,7 @@ logo_path = "logo.png"
 if os.path.exists(logo_path):
     st.image(logo_path, width=120)
 else:
-    st.markdown("# 🔐 Advanced Encryption Tool")
+    st.markdown("# "C:\Users\moham\OneDrive\Documents\kgrlogo.jpeg" Advanced Encryption Tool")
 
 with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
     cols = st.columns(2)
@@ -158,11 +158,11 @@ if not st.session_state.logged_in:
     st.stop()
 
 # Main app UI after login
-st.sidebar.markdown(f"**Logged in as**: {st.session_state.username}")
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.session_state.username = None
-    st.experimental_rerun()
+    st.rerun()
+
 
 st.header("File Encrypt / Decrypt")
 mode = st.radio("Mode", ["Encrypt", "Decrypt"]) 
