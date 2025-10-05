@@ -180,97 +180,97 @@ if uploaded_file is not None:
 col1, col2 = st.columns([1,3])
 with col1:
     if st.button("Run"):
-    if not uploaded_file:
-        st.error("Please upload a file first")
-    elif not password:
-        st.error("Enter the password for encryption/decryption")
-    else:
-        # Save uploaded to a temp file to avoid memory issues
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            tmp.write(uploaded_file.read())
-            tmp_path = tmp.name
+        if not uploaded_file:
+            st.error("Please upload a file first")
+        elif not password:
+            st.error("Enter the password for encryption/decryption")
+        else:
+            # Save uploaded to a temp file to avoid memory issues
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(uploaded_file.read())
+                tmp_path = tmp.name
 
-        original_name = uploaded_file.name
-        try:
-            if mode == "Encrypt":
-                # Read file and encrypt
-                with open(tmp_path, "rb") as f:
-                    data = f.read()
-                enc_bytes = encrypt_bytes(data, password)
-
-                # Encrypted filename keeps original name + .enc
-                out_name = original_name + ".enc"
-                with open(out_name, "wb") as f_out:
-                    f_out.write(enc_bytes)
-
-                st.success(f"Encrypted: {out_name}")
-
-                # Download button with correct MIME type
-                with open(out_name, "rb") as f_out:
-                    st.download_button(
-                        "Download Encrypted File",
-                        data=f_out,
-                        file_name=out_name,
-                        mime="application/octet-stream"
-                    )
-
-                st.session_state.history.append({"action": "Encrypt", "file": original_name})
-
-            else:  # Decrypt
-                with open(tmp_path, "rb") as f:
-                    enc_bytes = f.read()
-                try:
-                    dec_bytes = decrypt_bytes(enc_bytes, password)
-                except Exception as e:
-                    st.error(f"Decryption failed: {e}")
-                    os.unlink(tmp_path)
-                    st.stop()
-
-                # Restore original extension
-                if original_name.lower().endswith(".enc"):
-                    base = original_name[:-4]  # remove .enc
-                else:
-                    base = original_name
-
-                # Create mobile-friendly decrypted filename
-                name_part = Path(base).stem
-                ext_part = Path(base).suffix
-                out_name = f"{name_part}_decrypted{ext_part}"
-
-                with open(out_name, "wb") as f_out:
-                    f_out.write(dec_bytes)
-
-                st.success(f"Decrypted: {out_name}")
-
-                # Set MIME type for mobile compatibility
-                mime_type = "application/octet-stream"
-                ext = ext_part.lower()
-                if ext == ".pdf":
-                    mime_type = "application/pdf"
-                elif ext in [".txt", ".log"]:
-                    mime_type = "text/plain"
-                elif ext in [".jpg", ".jpeg"]:
-                    mime_type = "image/jpeg"
-                elif ext == ".png":
-                    mime_type = "image/png"
-                elif ext in [".mp4", ".mov"]:
-                    mime_type = "video/mp4"
-
-                with open(out_name, "rb") as f_out:
-                    st.download_button(
-                        "Download Decrypted File",
-                        data=f_out,
-                        file_name=out_name,
-                        mime=mime_type
-                    )
-
-                st.session_state.history.append({"action": "Decrypt", "file": original_name})
-
-        finally:
+            original_name = uploaded_file.name
             try:
-                os.unlink(tmp_path)
-            except Exception:
-                pass
+                if mode == "Encrypt":
+                    # Read file and encrypt
+                    with open(tmp_path, "rb") as f:
+                        data = f.read()
+                    enc_bytes = encrypt_bytes(data, password)
+    
+                    # Encrypted filename keeps original name + .enc
+                    out_name = original_name + ".enc"
+                    with open(out_name, "wb") as f_out:
+                        f_out.write(enc_bytes)
+    
+                    st.success(f"Encrypted: {out_name}")
+    
+                    # Download button with correct MIME type
+                    with open(out_name, "rb") as f_out:
+                        st.download_button(
+                            "Download Encrypted File",
+                            data=f_out,
+                            file_name=out_name,
+                            mime="application/octet-stream"
+                        )
+    
+                    st.session_state.history.append({"action": "Encrypt", "file": original_name})
+    
+                else:  # Decrypt
+                    with open(tmp_path, "rb") as f:
+                        enc_bytes = f.read()
+                    try:
+                        dec_bytes = decrypt_bytes(enc_bytes, password)
+                    except Exception as e:
+                        st.error(f"Decryption failed: {e}")
+                        os.unlink(tmp_path)
+                        st.stop()
+    
+                    # Restore original extension
+                    if original_name.lower().endswith(".enc"):
+                        base = original_name[:-4]  # remove .enc
+                    else:
+                        base = original_name
+    
+                    # Create mobile-friendly decrypted filename
+                    name_part = Path(base).stem
+                    ext_part = Path(base).suffix
+                    out_name = f"{name_part}_decrypted{ext_part}"
+    
+                    with open(out_name, "wb") as f_out:
+                        f_out.write(dec_bytes)
+    
+                    st.success(f"Decrypted: {out_name}")
+    
+                    # Set MIME type for mobile compatibility
+                    mime_type = "application/octet-stream"
+                    ext = ext_part.lower()
+                    if ext == ".pdf":
+                        mime_type = "application/pdf"
+                    elif ext in [".txt", ".log"]:
+                        mime_type = "text/plain"
+                    elif ext in [".jpg", ".jpeg"]:
+                        mime_type = "image/jpeg"
+                    elif ext == ".png":
+                        mime_type = "image/png"
+                    elif ext in [".mp4", ".mov"]:
+                        mime_type = "video/mp4"
+    
+                    with open(out_name, "rb") as f_out:
+                        st.download_button(
+                            "Download Decrypted File",
+                            data=f_out,
+                            file_name=out_name,
+                            mime=mime_type
+                        )
+    
+                    st.session_state.history.append({"action": "Decrypt", "file": original_name})
+    
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
 
 with col2:
     st.markdown("**Notes**")
