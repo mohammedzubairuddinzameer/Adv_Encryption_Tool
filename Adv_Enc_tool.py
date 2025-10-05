@@ -118,7 +118,7 @@ logo_path = "logo.png"
 if os.path.exists(logo_path):
     st.image(logo_path, width=120)
 else:
-    st.markdown("# "C:\Users\moham\OneDrive\Documents\kgrlogo.jpeg", Advanced Encryption Tool")
+    st.markdown("# Advanced Encryption Tool")
 
 with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
     cols = st.columns(2)
