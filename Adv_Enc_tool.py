@@ -114,8 +114,16 @@ if "history" not in st.session_state:
 st.set_page_config(page_title="Advanced Encryption Tool", layout="centered")
 
 # Top logo (you can place a local image named 'logo.png' next to this script)
-st.image(r"C:\Users\moham\OneDrive\Documents\kgrlogo.jpeg", width=150)
-st.markdown("## 🔐 Advanced Encryption Tool")
+st.markdown(
+    """
+    <div style="text-align: center;">
+        <img src="https://raw.githubusercontent.com/mohammedzubairuddinzameer/Adv_Encryption_Tool/main/logo.png" width="150">
+        <h2>🔐 Advanced Encryption Tool</h2>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 
 with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
