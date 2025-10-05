@@ -287,7 +287,7 @@ if st.session_state.history:
 # Footer / credits
 st.markdown("---")
 st.caption("Built with Streamlit. For production use, replace local JSON auth with a secure backend (Supabase, Firebase, or OAuth)."), "w") as f:
-        json.dump({}, f)
+    json.dump({}, f)
 
 # --- Utilities for user management ---
 def hash_password(password: str, salt: bytes = None):
