@@ -116,9 +116,9 @@ st.set_page_config(page_title="Advanced Encryption Tool", layout="centered")
 # Top logo (you can place a local image named 'logo.png' next to this script)
 logo_path = "logo.png"
 if os.path.exists(logo_path):
-    st.image(logo_path, width=120)
+    st.image(logo_path, width=150)
 else:
-    st.markdown("# Advanced Encryption Tool")
+    st.markdown("## 🔐 Advanced Encryption Tool")
 
 with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
     cols = st.columns(2)
