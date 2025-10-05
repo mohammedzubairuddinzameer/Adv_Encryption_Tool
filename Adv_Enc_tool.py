@@ -1,33 +1,3 @@
-# Advanced Encryption Tool - Streamlit version
-# Features:
-# - Streamlit-based Login / Signup (local JSON user store, passwords hashed)
-# - Encrypt / Decrypt files using AES-256 (CBC) with PBKDF2-derived key
-# - Keeps encrypted filename as <original_name>.enc and decrypted as <original_name>.dec
-# - Simple UX with logo, file-type icon, operation history
-# - Safe handling of uploaded files using a temp folder
-
-import streamlit as st
-from Crypto.Cipher import AES
-from Crypto.Protocol.KDF import PBKDF2
-from Crypto.Random import get_random_bytes
-import os
-import json
-import hashlib
-import tempfile
-from pathlib import Path
-import base64
-
-# --- Config ---
-USERS_FILE = "users.json"
-CHUNK_SIZE = 64 * 1024
-SALT_SIZE = 16
-KEY_SIZE = 32  # AES-256
-IV_SIZE = 16
-PBKDF2_ITERATIONS = 100000
-
-# Ensure users file exists
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE# Advanced Encryption Tool - Streamlit version
 # Features:
 # - Streamlit-based Login / Signup (local JSON user store, passwords hashed)
 # - Encrypt / Decrypt files using AES-256 (CBC) with PBKDF2-derived key
