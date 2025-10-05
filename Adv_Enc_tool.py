@@ -1,8 +1,10 @@
+# Advanced Encryption Tool - Streamlit Version
 # Features:
 # - Streamlit-based Login / Signup (local JSON user store, passwords hashed)
 # - Encrypt / Decrypt files using AES-256 (CBC) with PBKDF2-derived key
 # - Keeps encrypted filename as <original_name>.enc and decrypted as <original_name>.dec
 # - Simple UX with logo, file-type icon, operation history
+# - Mobile-friendly file download
 # - Safe handling of uploaded files using a temp folder
 
 import streamlit as st
@@ -14,7 +16,6 @@ import json
 import hashlib
 import tempfile
 from pathlib import Path
-import base64
 
 # --- Config ---
 USERS_FILE = "users.json"
@@ -28,7 +29,6 @@ PBKDF2_ITERATIONS = 100000
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w") as f:
         json.dump({}, f)
-
 
 # --- Utilities for user management ---
 def hash_password(password: str, salt: bytes = None):
@@ -54,7 +54,7 @@ def save_users(users):
     with open(USERS_FILE, "w") as f:
         json.dump(users, f, indent=2)
 
-# --- Key derivation and AES helpers ---
+# --- AES helpers ---
 def derive_key(password: str, salt: bytes) -> bytes:
     return PBKDF2(password, salt, dkLen=KEY_SIZE, count=PBKDF2_ITERATIONS)
 
@@ -63,11 +63,8 @@ def encrypt_bytes(data_bytes: bytes, password: str) -> bytes:
     key = derive_key(password, salt)
     iv = get_random_bytes(IV_SIZE)
     cipher = AES.new(key, AES.MODE_CBC, iv)
-
-    # pad to block size
     pad_len = (AES.block_size - len(data_bytes) % AES.block_size) or AES.block_size
     data_bytes_padded = data_bytes + bytes([pad_len]) * pad_len
-
     ciphertext = cipher.encrypt(data_bytes_padded)
     return salt + iv + ciphertext
 
@@ -80,11 +77,10 @@ def decrypt_bytes(enc_bytes: bytes, password: str) -> bytes:
     decrypted_padded = cipher.decrypt(ciphertext)
     pad_len = decrypted_padded[-1]
     if pad_len < 1 or pad_len > AES.block_size:
-        # invalid padding
         raise ValueError("Invalid password or corrupted file (bad padding).")
     return decrypted_padded[:-pad_len]
 
-# --- Small helper to map extension to emoji/icon ---
+# --- File icons ---
 EXT_ICON = {
     ".pdf": "📄 PDF",
     ".ppt": "📊 PPT",
@@ -110,10 +106,10 @@ if "username" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# --- Authentication UI ---
+# --- Streamlit page setup ---
 st.set_page_config(page_title="Advanced Encryption Tool", layout="centered")
 
-# Top logo (you can place a local image named 'logo.png' next to this script)
+# Top logo
 st.markdown(
     """
     <div style="text-align: center;">
@@ -124,8 +120,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-
+# --- Authentication UI ---
 with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
     cols = st.columns(2)
     with cols[0]:
@@ -134,11 +129,11 @@ with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
         login_password = st.text_input("Password", type="password", key="login_pass")
         if st.button("Login"):
             users = load_users()
-            if login_username in users and verify_password(users[login_username]["password"], login_password):
+            if login_username and login_username in users and verify_password(users[login_username]["password"], login_password):
                 st.success("Logged in successfully")
                 st.session_state.logged_in = True
                 st.session_state.username = login_username
-            else:
+            elif login_username:
                 st.error("Invalid username or password")
     with cols[1]:
         st.subheader("Sign Up")
@@ -158,23 +153,19 @@ with st.expander("Login / Signup", expanded=not st.session_state.logged_in):
                 save_users(users)
                 st.success("User registered — you can now log in")
 
-# If not logged in, don't show the rest
+# Stop if not logged in
 if not st.session_state.logged_in:
     st.info("Please log in or sign up to use the encryption tool")
     st.stop()
 
-# Main app UI after login
-if login_username in users and verify_password(users[login_username]["password"], login_password):
-    st.success("Logged in successfully")
-    st.session_state.logged_in = True
-    st.session_state.username = login_username
+# Sidebar: display username + logout
+st.sidebar.success(f"Logged in as: {st.session_state.username}")
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.session_state.username = None
+    st.experimental_rerun()
 
-# Display username at top
-if st.session_state.logged_in:
-    st.sidebar.success(f"Logged in as: {st.session_state.username}")
-
-
-
+# --- Main app ---
 st.header("File Encrypt / Decrypt")
 mode = st.radio("Mode", ["Encrypt", "Decrypt"]) 
 password = st.text_input("Enter password (for key derivation)", type="password")
@@ -191,11 +182,9 @@ with col1:
         elif not password:
             st.error("Enter the password for encryption/decryption")
         else:
-            # Save uploaded to a temp file to avoid memory issues
             with tempfile.NamedTemporaryFile(delete=False) as tmp:
                 tmp.write(uploaded_file.read())
                 tmp_path = tmp.name
-
             original_name = uploaded_file.name
             try:
                 if mode == "Encrypt":
@@ -209,7 +198,7 @@ with col1:
                     with open(out_name, "rb") as f_out:
                         st.download_button("Download Encrypted File", f_out, file_name=out_name)
                     st.session_state.history.append({"action":"Encrypt","file":original_name})
-                else:  # Decrypt
+                else:
                     with open(tmp_path, "rb") as f:
                         enc_bytes = f.read()
                     try:
@@ -218,7 +207,6 @@ with col1:
                         st.error(f"Decryption failed: {e}")
                         os.unlink(tmp_path)
                         st.stop()
-                    # produce .dec filename
                     if original_name.lower().endswith(".enc"):
                         base = original_name[:-4]
                     else:
@@ -235,6 +223,7 @@ with col1:
                     os.unlink(tmp_path)
                 except Exception:
                     pass
+
 with col2:
     st.markdown("**Notes**")
     st.write("- Encrypted files are saved as <original_filename>.enc")
